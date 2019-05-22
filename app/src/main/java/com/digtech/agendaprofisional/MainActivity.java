@@ -1,17 +1,22 @@
 package com.digtech.agendaprofisional;
 
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
 import android.widget.Toast;
 
 import com.digtech.agendaprofisional.Adapter.MyStateAdapter;
+import com.digtech.agendaprofisional.Common.Common;
 import com.digtech.agendaprofisional.Common.SpacesItemDecoration;
 import com.digtech.agendaprofisional.Interface.IOnAllStateLoadListener;
+import com.digtech.agendaprofisional.Model.Cabeleleiro;
 import com.digtech.agendaprofisional.Model.City;
+import com.digtech.agendaprofisional.Model.Saloes;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
@@ -19,6 +24,8 @@ import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import org.w3c.dom.Document;
 
@@ -29,6 +36,7 @@ import java.util.List;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import dmax.dialog.SpotsDialog;
+import io.paperdb.Paper;
 
 public class MainActivity extends AppCompatActivity implements IOnAllStateLoadListener {
 
@@ -48,12 +56,29 @@ public class MainActivity extends AppCompatActivity implements IOnAllStateLoadLi
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ButterKnife.bind(this);
+        Paper.init(this);
+        String user = Paper.book().read(Common.LOGGED_KEY);
+        if (TextUtils.isEmpty(user)){
+            ButterKnife.bind(this);
 
-        initView();
-        init();
+            initView();
+            init();
 
-        loadAllStateFromFireStore();
+            loadAllStateFromFireStore();
+        }else{
+            Gson gson = new Gson();
+            Common.state_name = Paper.book().read(Common.STATE_KEY);
+            Common.selected_salon = gson.fromJson(Paper.book().read(Common.SALON_KEY, ""),
+                    new TypeToken<Saloes>(){}.getType());
+            Common.currentCabeleleiro = gson.fromJson(Paper.book().read(Common.CABELELEIRO_KEY, ""),
+                    new TypeToken<Cabeleleiro>(){}.getType());
+
+            Intent intent = new Intent(this,StaffHomeActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+        }
     }
 
     private void loadAllStateFromFireStore() {

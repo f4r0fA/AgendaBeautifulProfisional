@@ -12,8 +12,11 @@ import android.widget.Toast;
 import com.digtech.agendaprofisional.Adapter.MyAdapterSaloes;
 import com.digtech.agendaprofisional.Common.Common;
 import com.digtech.agendaprofisional.Common.SpacesItemDecoration;
+import com.digtech.agendaprofisional.Interface.IGetCabeleleiroListener;
 import com.digtech.agendaprofisional.Interface.IOnLoadCountSalon;
 import com.digtech.agendaprofisional.Interface.ISaloesLoadListener;
+import com.digtech.agendaprofisional.Interface.IUserLoginRememberListener;
+import com.digtech.agendaprofisional.Model.Cabeleleiro;
 import com.digtech.agendaprofisional.Model.Saloes;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
@@ -21,15 +24,18 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.gson.Gson;
 
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import dmax.dialog.SpotsDialog;
+import io.paperdb.Paper;
 
-public class SalonListActivity extends AppCompatActivity implements IOnLoadCountSalon, ISaloesLoadListener {
+public class SalonListActivity extends AppCompatActivity implements IOnLoadCountSalon, ISaloesLoadListener, IGetCabeleleiroListener, IUserLoginRememberListener {
 
     @BindView(R.id.txt_salon_count)
     TextView txt_salon_count;
@@ -103,7 +109,7 @@ public class SalonListActivity extends AppCompatActivity implements IOnLoadCount
 
     @Override
     public void onSaloesLoadSucess(List<Saloes> saloesList) {
-        MyAdapterSaloes salonAdapter = new MyAdapterSaloes(this, saloesList);
+        MyAdapterSaloes salonAdapter = new MyAdapterSaloes(this, saloesList,this,this);
         recycler_salon.setAdapter(salonAdapter);
 
         dialog.dismiss();
@@ -113,5 +119,19 @@ public class SalonListActivity extends AppCompatActivity implements IOnLoadCount
     public void onSaloesLoadFailed(String message) {
         Toast.makeText(this, "Verifique sua Conexao", Toast.LENGTH_SHORT).show();
         dialog.dismiss();
+    }
+
+    @Override
+    public void onGetCabeleleiroSuccess(Cabeleleiro cabeleleiro) {
+        Common.currentCabeleleiro = cabeleleiro;
+        Paper.book().write(Common.CABELELEIRO_KEY, new Gson().toJson(cabeleleiro));
+    }
+
+    @Override
+    public void onUserLoginSuccess(String user) {
+        Paper.init(this);
+        Paper.book().write(Common.LOGGED_KEY, user);
+        Paper.book().write(Common.STATE_KEY, Common.state_name);
+        Paper.book().write(Common.SALON_KEY, new Gson().toJson(Common.selected_salon));
     }
 }

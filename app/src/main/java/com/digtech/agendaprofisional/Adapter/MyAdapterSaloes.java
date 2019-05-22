@@ -17,15 +17,21 @@ import android.widget.Toast;
 import com.digtech.agendaprofisional.Common.Common;
 import com.digtech.agendaprofisional.Common.CustomLoginDialog;
 import com.digtech.agendaprofisional.Interface.IDialogClickListener;
+import com.digtech.agendaprofisional.Interface.IGetCabeleleiroListener;
 import com.digtech.agendaprofisional.Interface.IRecyclerItemSelectedListener;
+import com.digtech.agendaprofisional.Interface.IUserLoginRememberListener;
+import com.digtech.agendaprofisional.Model.Cabeleleiro;
 import com.digtech.agendaprofisional.Model.Saloes;
 import com.digtech.agendaprofisional.R;
 import com.digtech.agendaprofisional.StaffHomeActivity;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
+
+import org.w3c.dom.Document;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,13 +42,18 @@ public class MyAdapterSaloes extends RecyclerView.Adapter<MyAdapterSaloes.MyView
     Context context;
     List<Saloes> saloesList;
     List<CardView> cardViewList;
-    LocalBroadcastManager localBroadcastManager;
 
-    public MyAdapterSaloes(Context context, List<Saloes> saloesList) {
+    IUserLoginRememberListener iUserLoginRememberListener;
+    IGetCabeleleiroListener iGetCabeleleiroListener;
+
+    public MyAdapterSaloes(Context context, List<Saloes> saloesList,IUserLoginRememberListener iUserLoginRememberListener,
+                           IGetCabeleleiroListener iGetCabeleleiroListener) {
         this.context = context;
         this.saloesList = saloesList;
         cardViewList = new ArrayList<>();
-        localBroadcastManager = LocalBroadcastManager.getInstance(context);
+        this.iGetCabeleleiroListener = iGetCabeleleiroListener;
+        this.iUserLoginRememberListener = iUserLoginRememberListener;
+
     }
 
     @NonNull
@@ -64,7 +75,7 @@ public class MyAdapterSaloes extends RecyclerView.Adapter<MyAdapterSaloes.MyView
         myViewHolder.setiRecyclerItemSelectedListener(new IRecyclerItemSelectedListener() {
             @Override
             public void onItemSelected(View view, int Position) {
-                Common.selectedSalon = saloesList.get(Position);
+                Common.selected_salon = saloesList.get(Position);
 
                 showLoginDialog();
 
@@ -86,7 +97,7 @@ public class MyAdapterSaloes extends RecyclerView.Adapter<MyAdapterSaloes.MyView
     }
 
     @Override
-    public void onClickPositionButton(final DialogInterface dialogInterface, String userName, String password) {
+    public void onClickPositionButton(final DialogInterface dialogInterface, final String userName, String password) {
         final AlertDialog loading = new SpotsDialog.Builder().setCancelable(false).setMessage("Logando, aguarde...").setContext(context).build();
 
         loading.show();
@@ -94,7 +105,7 @@ public class MyAdapterSaloes extends RecyclerView.Adapter<MyAdapterSaloes.MyView
                 .collection("AllSalon")
                 .document(Common.state_name)
                 .collection("Saloes")
-                .document(Common.selectedSalon.getSalomId())
+                .document(Common.selected_salon.getSalomId())
                 .collection("Cabeleleiro")
                 .whereEqualTo("username", userName)
                 .whereEqualTo("password", password)
@@ -112,6 +123,15 @@ public class MyAdapterSaloes extends RecyclerView.Adapter<MyAdapterSaloes.MyView
                     if (task.getResult().size() > 0){
                         dialogInterface.dismiss();
                         loading.dismiss();
+
+                        iUserLoginRememberListener.onUserLoginSuccess(userName);
+                        Cabeleleiro cabeleleiro = new Cabeleleiro();
+                        for (DocumentSnapshot cabeleleiroSnapShot:task.getResult()){
+                            cabeleleiro = cabeleleiroSnapShot.toObject(Cabeleleiro.class);
+                            cabeleleiro.setCabeleleiroId(cabeleleiroSnapShot.getId());
+                        }
+                        iGetCabeleleiroListener.onGetCabeleleiroSuccess(cabeleleiro);
+
                         Intent staffHome = new Intent(context, StaffHomeActivity.class);
                         staffHome.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
                         staffHome.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
