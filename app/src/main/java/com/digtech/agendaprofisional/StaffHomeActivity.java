@@ -2,7 +2,6 @@ package com.digtech.agendaprofisional;
 
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.provider.CalendarContract;
 import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
 import android.support.v4.widget.DrawerLayout;
@@ -12,12 +11,16 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.digtech.agendaprofisional.Adapter.MyTimeSlotAdapter;
 import com.digtech.agendaprofisional.Common.Common;
 import com.digtech.agendaprofisional.Common.SpacesItemDecoration;
+import com.digtech.agendaprofisional.Interface.INotificationCountListener;
 import com.digtech.agendaprofisional.Interface.ITimeSlotLoadListener;
 import com.digtech.agendaprofisional.Model.TimeSlot;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -26,13 +29,19 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+
+import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+
+import javax.annotation.Nullable;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -43,12 +52,10 @@ import dmax.dialog.SpotsDialog;
 import io.paperdb.Paper;
 
 import static com.digtech.agendaprofisional.Common.Common.currentCabeleleiro;
-import static com.digtech.agendaprofisional.Common.Common.currentSalom;
 import static com.digtech.agendaprofisional.Common.Common.selected_salon;
 import static com.digtech.agendaprofisional.Common.Common.simpleDateFormat;
-import static java.security.AccessController.getContext;
 
-public class StaffHomeActivity extends AppCompatActivity implements ITimeSlotLoadListener {
+public class StaffHomeActivity extends AppCompatActivity implements ITimeSlotLoadListener, INotificationCountListener {
 
     @BindView(R.id.activity_main)
     DrawerLayout drawerLayout;
@@ -70,6 +77,17 @@ public class StaffHomeActivity extends AppCompatActivity implements ITimeSlotLoa
 
     android.app.AlertDialog alertDialog;
 
+    TextView txt_notification_badge;
+    CollectionReference notificationCollection;
+    CollectionReference currentBookDateCollection;
+
+    EventListener<QuerySnapshot> notificationEvent;
+    EventListener<QuerySnapshot> bookingEvent;
+
+    ListenerRegistration notificationListener;
+    ListenerRegistration bookingRealtimeListener;
+
+    INotificationCountListener iNotificationCountListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -172,13 +190,7 @@ public class StaffHomeActivity extends AppCompatActivity implements ITimeSlotLoa
 
     private void loadAvailableTimeSlotOfCabeleleiro(final String cabeleleiroId, final String bookDate) {
         alertDialog.show();
-        cabeleleiroDoc = FirebaseFirestore.getInstance()
-                .collection("AllSalon")
-                .document(Common.state_name)
-                .collection("Saloes")
-                .document(Common.selected_salon.getSalomId())
-                .collection("Cabeleleiro")
-                .document(cabeleleiroId);
+
 
         cabeleleiroDoc.get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
             @Override
@@ -223,7 +235,53 @@ public class StaffHomeActivity extends AppCompatActivity implements ITimeSlotLoa
     }
 
     private void init() {
+        initNotificationRealtimeUpdate();
+        iNotificationCountListener = this;
         iTimeSlotLoadListener = this ;
+        InitBookingRealtimeUpdate();
+    }
+
+    private void InitBookingRealtimeUpdate() {
+        cabeleleiroDoc = FirebaseFirestore.getInstance()
+                .collection("AllSalon")
+                .document(Common.state_name)
+                .collection("Saloes")
+                .document(Common.selected_salon.getSalomId())
+                .collection("Cabeleleiro")
+                .document(Common.currentCabeleleiro.getCabeleleiroId());
+
+        final Calendar date = Calendar.getInstance();
+        date.add(Calendar.DATE, 0);
+        bookingEvent = new EventListener<QuerySnapshot>() {
+            @Override
+            public void onEvent(@Nullable QuerySnapshot queryDocumentSnapshots, @Nullable FirebaseFirestoreException e) {
+                loadAvailableTimeSlotOfCabeleleiro(currentCabeleleiro.getCabeleleiroId(),
+                        simpleDateFormat.format(date.getTime()));
+            }
+        };
+        currentBookDateCollection = cabeleleiroDoc.collection(Common.simpleDateFormat.format(date.getTime()));
+        bookingRealtimeListener = currentBookDateCollection.addSnapshotListener(bookingEvent);
+    }
+
+    private void initNotificationRealtimeUpdate() {
+        notificationCollection = FirebaseFirestore.getInstance()
+                .collection("AllSalon")
+                .document(Common.state_name)
+                .collection("Saloes")
+                .document(Common.selected_salon.getSalomId())
+                .collection("Cabeleleiro")
+                .document(Common.currentCabeleleiro.getCabeleleiroId())
+                .collection("Notifications");
+
+        notificationEvent = new EventListener<QuerySnapshot>() {
+            @Override
+            public void onEvent(@Nullable QuerySnapshot queryDocumentSnapshots, @Nullable FirebaseFirestoreException e) {
+                if (queryDocumentSnapshots.size() > 0)
+                    loadNotification();
+            }
+        };
+       notificationListener = notificationCollection.whereEqualTo("read", false).addSnapshotListener(notificationEvent);
+
     }
 
     @Override
@@ -263,5 +321,78 @@ public class StaffHomeActivity extends AppCompatActivity implements ITimeSlotLoa
         MyTimeSlotAdapter adapter = new MyTimeSlotAdapter(this);
         recycler_time_slot.setAdapter(adapter);
         alertDialog.dismiss();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.staff_home_menu,menu);
+        final MenuItem menuItem = menu.findItem(R.id.action_new_noitification);
+        txt_notification_badge = (TextView)menuItem.getActionView()
+                .findViewById(R.id.notification_badge);
+
+        loadNotification();
+        menuItem.getActionView().setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+              onOptionsItemSelected(menuItem);
+            }
+        });
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    private void loadNotification() {
+        notificationCollection.whereEqualTo("read", false)
+                .get()
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(@NonNull Exception e) {
+                        Toast.makeText(StaffHomeActivity.this, "Verifique sua conexao, para checar as notificações", Toast.LENGTH_SHORT).show();
+                    }
+                }).addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if (task.isSuccessful()){
+                    iNotificationCountListener.onNotificationCountSuccess(task.getResult().size());
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onNotificationCountSuccess(int count) {
+        if (count == 0)
+            txt_notification_badge.setVisibility(View.INVISIBLE);
+        else{
+            txt_notification_badge.setVisibility(View.VISIBLE);
+            if (count <= 9)
+                txt_notification_badge.setText(String.valueOf(count));
+            else
+                txt_notification_badge.setText("+9");
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        initNotificationRealtimeUpdate();
+        InitBookingRealtimeUpdate();
+    }
+
+    @Override
+    protected void onStop() {
+        if (notificationListener != null)
+            notificationListener.remove();
+        if (bookingRealtimeListener != null)
+            bookingRealtimeListener.remove();
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (notificationListener != null)
+            notificationListener.remove();
+        if (bookingRealtimeListener != null)
+            bookingRealtimeListener.remove();
+        super.onDestroy();
     }
 }

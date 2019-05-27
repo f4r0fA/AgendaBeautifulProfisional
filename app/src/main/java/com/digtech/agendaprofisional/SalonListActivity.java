@@ -82,7 +82,7 @@ public class SalonListActivity extends AppCompatActivity implements IOnLoadCount
                 }).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
-                iSaloesLoadListener.onSaloesLoadFailed(e.getMessage());
+                iSaloesLoadListener.onSaloesLoadFailed("Verifique sua conexão ou tente mais tarde =(");
             }
         });
     }
@@ -117,7 +117,7 @@ public class SalonListActivity extends AppCompatActivity implements IOnLoadCount
 
     @Override
     public void onSaloesLoadFailed(String message) {
-        Toast.makeText(this, "Verifique sua Conexao", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Verifique sua conexão ou tente mais tarde", Toast.LENGTH_SHORT).show();
         dialog.dismiss();
     }
 
