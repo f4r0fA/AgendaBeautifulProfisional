@@ -1,10 +1,31 @@
 package com.digtech.agendaprofisional.Common;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.Build;
+import android.provider.Settings;
+import android.support.annotation.NonNull;
+import android.support.v4.app.NotificationCompat;
+import android.text.TextUtils;
+
 import com.digtech.agendaprofisional.Model.Cabeleleiro;
+import com.digtech.agendaprofisional.Model.MyToken;
 import com.digtech.agendaprofisional.Model.Saloes;
+import com.digtech.agendaprofisional.R;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+
+import io.paperdb.Paper;
 
 public class Common {
     public static final Object DISABLE_TAG = "DISABLE";
@@ -13,6 +34,8 @@ public class Common {
     public static final String STATE_KEY = "STATE";
     public static final String SALON_KEY = "SALON";
     public static final String CABELELEIRO_KEY = "CABELELEIRO";
+    public static final String TITLE_KEY = "title";
+    public static final String CONTENT_KEY = "content";
     public static String state_name="";
     public static Saloes selected_salon;
     public static Cabeleleiro currentCabeleleiro;
@@ -64,5 +87,68 @@ public class Common {
                 return "INDISPONÍVEL";
         }
 
+    }
+
+    public static void showNotification(Context context, int notification_id, String title, String content, Intent intent) {
+        PendingIntent pendingIntent = null;
+        if (intent != null)
+            pendingIntent = PendingIntent.getActivity(context,
+                    notification_id, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        String NOTIFICATION_CHANNEL_ID = "digtech_desenvolvimento_01";
+        NotificationManager notificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
+            NotificationChannel notificationChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID,
+                    "Agenda Beautiful Digtech",NotificationManager.IMPORTANCE_DEFAULT);
+            notificationChannel.setDescription("Agenda PRO");
+            notificationChannel.enableLights(true);
+            notificationChannel.enableVibration(true);
+
+            notificationManager.createNotificationChannel(notificationChannel);
+
+        }
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID);
+
+        builder.setContentTitle(title)
+                .setContentText(content)
+                .setAutoCancel(false)
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(),R.mipmap.ic_launcher));
+
+        if (pendingIntent != null)
+            builder.setContentIntent(pendingIntent);
+        Notification notification = builder.build();
+
+        notificationManager.notify(notification_id, notification);
+    }
+
+    public enum TOKEN_TYPE{
+        CLIENTE,
+        CABELELEIRO,
+        MANAGER
+    }
+
+    public static void updateToken(Context context, String token) {
+        Paper.init(context);
+        String user = Paper.book().read(Common.LOGGED_KEY);
+        if (user != null){
+            if (!TextUtils.isEmpty(user)){
+                MyToken myToken = new MyToken();
+                myToken.setToken(token);
+                myToken.setTokenType(TOKEN_TYPE.CABELELEIRO);
+                myToken.setUser(user);
+
+                FirebaseFirestore.getInstance()
+                        .collection("Tokens")
+                        .document(user)
+                        .set(myToken)
+                        .addOnCompleteListener(new OnCompleteListener<Void>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+
+                            }
+                        });
+            }
+        }
     }
 }
