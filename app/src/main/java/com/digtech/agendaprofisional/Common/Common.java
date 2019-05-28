@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.os.Build;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
@@ -102,6 +103,8 @@ public class Common {
                     "Agenda Beautiful Digtech",NotificationManager.IMPORTANCE_DEFAULT);
             notificationChannel.setDescription("Agenda PRO");
             notificationChannel.enableLights(true);
+            notificationChannel.setLightColor(Color.RED);
+            notificationChannel.setVibrationPattern(new long[]{0,1000,500,1000});
             notificationChannel.enableVibration(true);
 
             notificationManager.createNotificationChannel(notificationChannel);
