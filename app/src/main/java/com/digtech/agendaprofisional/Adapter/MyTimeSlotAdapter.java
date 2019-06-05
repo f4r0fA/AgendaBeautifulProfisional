@@ -50,8 +50,6 @@ public class MyTimeSlotAdapter extends RecyclerView.Adapter<MyTimeSlotAdapter.My
     public void onBindViewHolder(@NonNull final MyTimeSlotAdapter.MyViewHolder myViewHolder, final int i) {
         myViewHolder.txt_time_slot.setText(new StringBuilder(Common.convertTimeSlotToString(i)).toString());
         if (timeSlotList.size()==0){
-            myViewHolder.card_time_slot.setCardBackgroundColor(context.getResources().getColor(android.R.color.white));
-
             myViewHolder.txt_time_slot_descricao.setText("DISPONÍVEL");
             myViewHolder.txt_time_slot_descricao.setTextColor(context.getResources().getColor(android.R.color.black));
             myViewHolder.txt_time_slot.setTextColor(context.getResources().getColor(android.R.color.black));
@@ -78,9 +76,10 @@ public class MyTimeSlotAdapter extends RecyclerView.Adapter<MyTimeSlotAdapter.My
             public void onItemSelected(View view, int pos) {
                 for (CardView cardView:cardViewList){
                     if (cardView.getTag() == null)
-                        cardView.setBackgroundColor(context.getResources().getColor(android.R.color.white));
+                        cardView.setCardBackgroundColor(context.getResources().getColor(android.R.color.white));
                 }
-                myViewHolder.card_time_slot.setBackgroundColor(context.getResources().getColor(android.R.color.holo_orange_dark));
+                myViewHolder.card_time_slot.setCardBackgroundColor(context.getResources()
+                        .getColor(android.R.color.holo_orange_dark));
             }
         });
     }

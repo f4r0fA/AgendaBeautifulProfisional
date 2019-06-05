@@ -13,5 +13,19 @@
         android:layout_marginTop="15dp"
         android:layout_marginBottom="15dp"
         android:background="@drawable/logowrite" />
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="6px"
+        android:background="@android:color/holo_orange_light"/>
+    <TextView
+        android:id="@+id/txt_barber_name"
+        android:text="Nome"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:textSize="20sp"
+        android:fontFamily="@font/robotto"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
 
 </LinearLayout>

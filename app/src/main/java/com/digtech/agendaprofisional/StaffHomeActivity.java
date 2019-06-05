@@ -37,6 +37,8 @@ import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
+import org.w3c.dom.Text;
+
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -56,6 +58,8 @@ import static com.digtech.agendaprofisional.Common.Common.selected_salon;
 import static com.digtech.agendaprofisional.Common.Common.simpleDateFormat;
 
 public class StaffHomeActivity extends AppCompatActivity implements ITimeSlotLoadListener, INotificationCountListener {
+
+    TextView txt_barber_name;
 
     @BindView(R.id.activity_main)
     DrawerLayout drawerLayout;
@@ -130,6 +134,10 @@ public class StaffHomeActivity extends AppCompatActivity implements ITimeSlotLoa
                 return true;
             }
         });
+
+        View hearderView = navigationView.getHeaderView(0);
+        txt_barber_name = (TextView) hearderView.findViewById(R.id.txt_barber_name);
+        txt_barber_name.setText(Common.currentCabeleleiro.getName());
 
         alertDialog = new SpotsDialog.Builder().setCancelable(false).setContext(this).setMessage("Carregando").build();
 
